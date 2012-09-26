@@ -60,7 +60,7 @@ func main() {
 
 		if *threads {
 			c := make(chan interface{}, 2)
-                        c <- i
+			c <- i
 			go solve(t, c)
 			ch = append(ch, c)
 		} else {
