@@ -1,10 +1,13 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"os"
 	"runtime"
-	//"runtime/pprof"
-	//"os"
+	"runtime/pprof"
+	"strconv"
+	"strings"
 )
 
 type Node struct {
@@ -22,43 +25,73 @@ type State struct {
 	state uint64
 }
 
+var cpuprof = flag.String("p", "", "write profile into file")
+var threads = flag.Bool("t", false, "multi-threaded")
+var cached = flag.Bool("c", false, "calculation method: brute force (default) or cached")
+var limit = flag.String("l", "", "comma-separated list of test cases to run")
+
 func main() {
-	runtime.GOMAXPROCS(2 * runtime.NumCPU())
-	//f, err := os.Create("cpuprof")
-	//if err != nil {
-	//panic(err)
-	//}
+	flag.Parse()
+
+	if *threads {
+		runtime.GOMAXPROCS(2 * runtime.NumCPU())
+	}
+
+	if *cpuprof != "" {
+		f, err := os.Create("cpuprof")
+		if err != nil {
+			panic(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	}
 
 	var tests int
 	mustr(fmt.Scan(&tests))
-	ch := make([]chan interface{}, tests)
 
-	//pprof.StartCPUProfile(f)
-	//defer pprof.StopCPUProfile()
+	l := parseLimit(tests)
+
+	ch := make([]chan interface{}, 0)
 	for i := 1; i <= tests; i++ {
 		t := readTask()
-		ch[i-1] = make(chan interface{}, 1)
-		go solve(t, ch[i-1])
+		if !l[i] {
+			continue
+		}
+
+		if *threads {
+			c := make(chan interface{}, 2)
+                        c <- i
+			go solve(t, c)
+			ch = append(ch, c)
+		} else {
+
+			c := make(chan interface{}, 1)
+			solve(t, c)
+			fmt.Printf("Case #%d: %v\n", i, <-c)
+		}
 	}
 
-	for i, c := range ch {
-		r := <-c
-		fmt.Printf("Case #%d: %v\n", i+1, r)
+	if *threads {
+		for _, c := range ch {
+			fmt.Printf("Case #%d: %v\n", <-c, <-c)
+		}
 	}
 }
 
 func solve(t Task, c chan interface{}) {
-	//fmt.Println(t)
 	r := checkConnectivity(t)
 	if r != nil {
 		c <- r
 		return
 	}
 
-	t = reorder(t, findReordering(t))
-	ct := makeCachedTask(t)
-	c <- ct.brent()
-	//return brent(t)
+	if *cached {
+		t = reorder(t, findReordering(t))
+		ct := makeCachedTask(t)
+		c <- ct.brent()
+	} else {
+		c <- brent(t)
+	}
 }
 
 func findReordering(t Task) []int {
@@ -243,6 +276,27 @@ func readTask() Task {
 
 func (t *Task) Start() State {
 	return State{t.start, 0}
+}
+
+func parseLimit(nt int) map[int]bool {
+	r := make(map[int]bool)
+	if *limit == "" {
+		// run all if no limit is set
+		for i := 1; i <= nt; i++ {
+			r[i] = true
+		}
+	} else {
+		s := strings.Split(*limit, ",")
+		for _, v := range s {
+			n, err := strconv.Atoi(v)
+			if err != nil {
+				fmt.Printf("parsing limit: %q", v)
+				continue
+			}
+			r[n] = true
+		}
+	}
+	return r
 }
 
 func mustr(v interface{}, e error) {
