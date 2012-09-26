@@ -1,7 +1,11 @@
-#include <iostream>
-#include <utility>
 #include <cstdint>
+#include <iostream>
+#include <set>
+#include <sstream>
+#include <utility>
 #include <vector>
+
+#include <unistd.h>
 
 using namespace std;
 
@@ -48,7 +52,7 @@ public:
             << "\n";
     }
 
-    void solve(state pos) const
+    std::string solve(state pos) const
     {
         state tortoise = pos;
         state hare = pos;
@@ -72,10 +76,12 @@ public:
             next(tortoise);
         }
 
+        std::ostringstream os;
         if (hare == tortoise)
-            std::cout << "Infinity " << steps << "\n";
+            os << "Infinity " << steps;
         else
-            std::cout << steps << "\n";
+            os << steps;
+        return os.str();
     }
 
     int target;
@@ -84,17 +90,43 @@ public:
 };
 
 
-int main()
+int main(int argc, char **argv)
 {
+    bool doLimit = false;
+    std::set<int> limit;
+    const char *opts = "l:";
+    int opt;
+    while ((opt = getopt(argc, argv, opts)) != -1)
+        switch (opt)
+        {
+            case 'l':
+                {
+                    doLimit = true;
+                    // parse
+                    std::istringstream is(optarg);
+                    int i;
+                    while (is >> i)
+                    {
+                        limit.insert(i);
+                        if (is.peek() == ',')
+                            is.ignore();
+                    }
+                    break;
+                }
+            default:
+                return 1;
+        }
+
     int tests;
     std::cin >> tests;
 
     for (int i = 1; i <= tests; ++i)
     {
         walker w(std::cin);
-        std::cout << "Case #" << i << ": ";
-        w.solve(std::make_pair(0, 0));
-        if (i > 2)
-            ;//break;
+        if (!doLimit || limit.count(i))
+        {
+            auto r = w.solve(std::make_pair(0, 0));
+            std::cout << "Case #" << i << " " << r << "\n";
+        }
     }
 }

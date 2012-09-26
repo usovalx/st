@@ -6,5 +6,5 @@ stg: *.go
 	go build -compiler gccgo -gccgoflags -O3
 	mv st stg
 
-stc: stc.cc
-	g++ --std=c++11 -O3 -o stcstc.cc
+stc: prog.cc
+	g++ --std=c++11 -O3 -o stc prog.cc
