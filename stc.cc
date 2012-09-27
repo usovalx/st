@@ -14,14 +14,11 @@ class walker
 public:
     // current node, state map
     typedef std::pair<int, uint64_t> state;
-
-    void next(state &cur) const
-    {
-        uint64_t m = uint64_t(1) << cur.first;
-        uint64_t v = cur.second & m;
-        cur.first = (v == 0 ? lefts : rights)[cur.first];
-        cur.second ^= m;
-    }
+    struct Node {
+        int l;
+        int r;
+        // uint64_t mask;    // it's a bit strange, but C++ version is about 10% slower with it
+    };
 
     walker(std::istream& is)
     {
@@ -31,13 +28,9 @@ public:
         {
             int left, right;
             is >> left >> right;
-            lefts.push_back(left-1);
-            rights.push_back(right-1);
+            nodes.push_back(Node{left-1, right-1});
         }
-
         target -= 1;
-
-        //std::cout << "READ: " << target << "  " << lefts.size() << "  " << rights.size() << "\n";
     }
 
     void log(uint64_t path, const state& s) const 
@@ -48,45 +41,52 @@ public:
             << s.first << " "
             << ((s.second & m) == 0 ? "L" : "R")
             << " " << s.second
-            << " " << lefts[s.first] << " " << rights[s.first]
+            << " " << nodes[s.first].l << " " << nodes[s.first].r
             << "\n";
     }
 
     std::string solve(state pos) const
     {
-        state tortoise = pos;
-        state hare = pos;
-        uint64_t steps = 0;
+        state tort, hare;
+        uint64_t path, pow, thr;
 
-        while(true)
+        tort = hare = pos;
+        path = 0;
+        pow = thr = 1;
+
+        while (hare.first != target)
         {
-            //if (steps % 100000 == 0)
-                //log(steps, hare);
-            //log(steps, hare);
-            next(hare);
-            ++ steps;
-            if (hare == tortoise || hare.first == target)
+            ++path;
+            move(hare);
+            if (hare == tort)
                 break;
-            //log(steps, hare);
-            next(hare);
-            ++ steps;
-            if (hare == tortoise || hare.first == target)
-                break;
-
-            next(tortoise);
+            if (path == thr)
+            {
+                tort = hare;
+                pow *= 2;
+                thr += pow;
+            }
         }
 
         std::ostringstream os;
-        if (hare == tortoise)
-            os << "Infinity " << steps;
+        if (hare.first == target)
+            os << path;
         else
-            os << steps;
+            os << "Infinity " << path;
         return os.str();
     }
 
+    void move(state &cur) const
+    {
+        const Node& n = nodes[cur.first];
+        uint64_t m = uint64_t(1) << cur.first;
+        uint64_t v = cur.second & m;
+        cur.first = (v == 0 ? n.l : n.r);
+        cur.second ^= m;
+    }
+
     int target;
-    std::vector<int> lefts;
-    std::vector<int> rights;
+    std::vector<Node> nodes;
 };
 
 
