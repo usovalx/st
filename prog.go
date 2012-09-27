@@ -38,7 +38,7 @@ func main() {
 	}
 
 	if *cpuprof != "" {
-		f, err := os.Create("cpuprof")
+		f, err := os.Create(*cpuprof)
 		if err != nil {
 			panic(err)
 		}
