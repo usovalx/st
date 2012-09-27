@@ -7,4 +7,4 @@ stg: *.go
 	mv st stg
 
 stc: stc.cc
-	g++ --std=c++11 -O3 -o stc stc.cc
+	g++ --std=c++11 -W -Wall -O3 -o stc stc.cc

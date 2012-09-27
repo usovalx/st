@@ -22,6 +22,7 @@ public:
 
     walker(std::istream& is)
     {
+        start = 0;
         is >> target;
 
         for (int i = 1; i < target; ++i)
@@ -45,7 +46,16 @@ public:
             << "\n";
     }
 
-    std::string solve(state pos) const
+    std::string solve() const
+    {
+        state startState(start, 0);
+        auto r = check_connectivity(startState);
+        if (r != "")
+            return r;
+        return brent(startState);
+    }
+
+    std::string brent(state pos) const
     {
         state tort, hare;
         uint64_t path, pow, thr;
@@ -85,6 +95,29 @@ public:
         cur.second ^= m;
     }
 
+    std::string check_connectivity(state start) const
+    {
+        std::vector<bool> vmap(nodes.size(), false);
+        if (!dfs(start.first, vmap))
+            return "Unreachable";
+        else
+            return "";
+    }
+
+    bool dfs(int n, std::vector<bool>& vmap) const
+    {
+        if (n == target)
+            return true;
+        if (vmap[n])
+            return false;
+
+        vmap[n] = true;
+        bool r = dfs(nodes[n].l, vmap) || dfs(nodes[n].r, vmap);
+        vmap[n] = false;
+        return r;
+    }
+
+    int start;
     int target;
     std::vector<Node> nodes;
 };
@@ -125,7 +158,7 @@ int main(int argc, char **argv)
         walker w(std::cin);
         if (!doLimit || limit.count(i))
         {
-            auto r = w.solve(std::make_pair(0, 0));
+            auto r = w.solve();
             std::cout << "Case #" << i << " " << r << "\n";
         }
     }
